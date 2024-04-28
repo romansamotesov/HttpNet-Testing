@@ -1081,7 +1081,7 @@ namespace TestApi
             }
         }
 
-        public void TestTest()
+        public void MyTestTest()
         {
            
         }
