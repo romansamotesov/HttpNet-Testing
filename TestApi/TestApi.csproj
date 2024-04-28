@@ -33,7 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\REST-Testing\REST-Testing.csproj" />
+    <ProjectReference Include="..\REST-Testing\Net-Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
