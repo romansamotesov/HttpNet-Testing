@@ -1,0 +1,3 @@
+2024-05-12 16:41:18.2846|INFO|TestApi.MyUnitTests|
+2024-05-12 16:41:18.3137|INFO|TestApi.MyUnitTests|["Response"]
+2024-05-12 16:41:18.3356|INFO|TestApi.MyUnitTests|["ABCDE","12345"]
