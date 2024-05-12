@@ -1,0 +1,1 @@
+2024-05-12 16:42:48.4963|INFO|TestApi.MyUnitTests|[{"name":"TestName30","age":30,"sex":"MALE","zipCode":"23456"},{"name":"TestName40","age":40,"sex":"FEMALE","zipCode":"ABCDE"}]
