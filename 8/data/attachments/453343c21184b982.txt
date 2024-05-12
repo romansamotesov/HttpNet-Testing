@@ -1,0 +1,2 @@
+2024-05-12 17:02:34.4692|INFO|TestApi.MyUnitTests|
+2024-05-12 17:02:34.4744|INFO|TestApi.MyUnitTests|["Response"]
