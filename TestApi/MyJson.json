@@ -1,13 +1,20 @@
 [
-{  "age": 0,
-  "name": "TestName",
-  "sex": "FEMALE",
-  "zipCode": "23456"
-}, 
-{
-  "age": 2,
-  "name": "TestName2",
-  "sex": "FEMALE",
-  "zipCode": "ABCDE"
-}
+  {
+    "age": 20,
+    "name": "TestName20",
+    "sex": "MALE",
+    "zipCode": "12345"
+  },
+  {
+    "age": 30,
+    "name": "TestName30",
+    "sex": "FEMALE",
+    "zipCode": "23456"
+  },
+  {
+    "age": 40,
+    "name": "TestName40",
+    "sex": "FEMALE",
+    "zipCode": "ABCDE"
+  }
 ]

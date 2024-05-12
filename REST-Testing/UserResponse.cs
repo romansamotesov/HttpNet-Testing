@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace REST_Testing
+namespace Rest_Testing
 {
     public record UserResponse
     {
