@@ -4,10 +4,11 @@ namespace REST_Testing
 {
     public class User
     {
-        [JsonPropertyName("name")]
-        public string Name { get; set; }
+
         [JsonPropertyName("age")]
         public int Age { get; set; }
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
         [JsonPropertyName("sex")]
         public string Sex { get; set; }
         [JsonPropertyName("zipCode")]
@@ -15,16 +16,16 @@ namespace REST_Testing
 
         public User(int age, string name, Enums.Sex sex, string zipCode)
         {
-            Age = age;
-            Name = name;
-            Sex = sex.ToString();
-            ZipCode = zipCode;
+            this.Name = name;
+            this.Age = age;
+            this.Sex = sex.ToString();
+            this.ZipCode = zipCode;
         }
 
         public User(string name, Enums.Sex sex)
         {
-            Name = name;
-            Sex = sex.ToString();
+            this.Name = name;
+            this.Sex = sex.ToString();
         }
     }
 }

@@ -1,18 +1,13 @@
-using RestSharp;
 using REST_Testing;
 using System.Net;
-using System.Threading.Tasks.Dataflow;
-using System.Reflection.PortableExecutable;
 using NUnit.Allure.Core;
 using NUnit.Allure.Attributes;
-using NUnit.Allure;
-using NUnit.Framework.Constraints;
 using Allure.Net.Commons;
 using System.Text;
-using System.Reflection.Emit;
-using System.Linq;
 using Newtonsoft.Json;
-
+using System.Net.Http.Json;
+using Rest_Testing;
+using System.Net.Http.Headers;
 
 namespace TestApi
 {
@@ -26,7 +21,7 @@ namespace TestApi
         [OneTimeSetUp]
         public void Setup()
         {
-            Logger.Info("Test execution started");//test
+            Logger.Info("Test execution started");
         }
 
         [Test]
@@ -35,7 +30,7 @@ namespace TestApi
         [AllureSeverity(SeverityLevel.critical)]
         [AllureSubSuite("Get")]
         [AllureIssue("Issue Status Code is not 200")]
-        public void GetZipCodes_Test()
+        public async Task GetZipCodes_Test()
         {
             var expectedZipCodes = new List<string>()
             {
@@ -45,21 +40,16 @@ namespace TestApi
             };
 
             AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = ReadAuthenticator.getInstance(),
-            };
-            var client = new RestClient(options);
-            var request = new RestRequest("http://localhost:49000/zip-codes");
-            Logger.Info(request.Resource, "Request");
-            var response = client.GetAsync(request).Result;
-            Logger.Info(response.Content, "Response");
+            var client = await MyReadHttpClient.getInstance();
+            HttpResponseMessage response = await client.GetAsync("http://localhost:49000/zip-codes");
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
             try
             {
                 Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Status Code is not 200");
-                var receivedZipcodes = ZipCode.ZipCodesToList(response.Content);
+                var receivedZipcodes = ZipCode.ZipCodesToList(responseContent);
                 Assert.That(receivedZipcodes, Is.EqualTo(expectedZipCodes), "list of zipCodes is not equal");
             }
             catch (Exception ex)
@@ -74,7 +64,7 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSeverity(SeverityLevel.critical)]
         [AllureSubSuite("Post")]
-        public void PostZipCodes_Test()
+        public async Task PostZipCodes_Test()
         {
             var expectedZipCodes = new List<string>()
             {
@@ -86,27 +76,23 @@ namespace TestApi
             };
 
             AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var client = new RestClient(options);
-            var request = new RestRequest("http://localhost:49000/zip-codes/expand");
-            var zipcodes = new ZipCode(new List<string>() { "12333", "12344" });
-            request.AddJsonBody(zipcodes.Body);
-            AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(zipcodes.Body), "json");
-            Logger.Info(request.Resource, "Request");
-            var response = client.Post(request);
-            Logger.Info(response.Content, "Response");
+            var client = await MyWriteHttpClient.getInstance();
+            var zipcodes = new List<string>() { "12333", "12344" };
+            var json = JsonConvert.SerializeObject(zipcodes);
+            var data = new StringContent(json, Encoding.UTF8, "application/json");
+            AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(json), "json");
+            var response = await client.PostAsync("http://localhost:49000/zip-codes/expand", data);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
-            try 
+            try
             {
                 Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
-                var receivedZipcodes = ZipCode.ZipCodesToList(response.Content);
+                var receivedZipcodes = ZipCode.ZipCodesToList(responseContent);
                 Assert.That(receivedZipcodes, Is.EqualTo(expectedZipCodes), "lists of zipCodes are not equal");
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 Logger.Error(ex, "Exception is occurred");
                 throw new Exception();
@@ -119,7 +105,7 @@ namespace TestApi
         [AllureSeverity(SeverityLevel.normal)]
         [AllureSubSuite("Post")]
         [AllureIssue("Issue Duplicate ZipCode is created")]
-        public void PostDuplicateZipCodes_Test()
+        public async Task PostDuplicateZipCodes_Test()
         {
             var expectedZipCodes = new List<string>()
             {
@@ -131,24 +117,20 @@ namespace TestApi
             };
 
             AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var client = new RestClient(options);
-            var request = new RestRequest("http://localhost:49000/zip-codes/expand"); 
-            var zipcodes = new ZipCode(new List<string>() { "12355", "12355" });
-            request.AddJsonBody(zipcodes.Body);
-            AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(zipcodes.Body), "json");
-            Logger.Info(request.Resource, "Request");
-            var response = client.Post(request);
-            Logger.Info(response.Content, "Response");
+            var client = await MyWriteHttpClient.getInstance();
+            var zipcodes = new List<string>() { "12355", "12355" };
+            var json = JsonConvert.SerializeObject(zipcodes);
+            var data = new StringContent(json, Encoding.UTF8, "application/json");
+            AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(json), "json");
+            var response = await client.PostAsync("http://localhost:49000/zip-codes/expand", data);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
             try
             {
                 Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
-                var receivedZipcodes = ZipCode.ZipCodesToList(response.Content);
+                var receivedZipcodes = ZipCode.ZipCodesToList(responseContent);
                 Assert.That(receivedZipcodes, Is.EqualTo(expectedZipCodes), "lists of zipCodes are not equal");
             }
             catch (Exception ex)
@@ -164,7 +146,7 @@ namespace TestApi
         [AllureSubSuite("Post")]
         [AllureIssue("Issue Already used ZipCode is created")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void PostAlreadyUsedZipCodes_Test()
+        public async Task PostAlreadyUsedZipCodes_Test()
         {
             var expectedZipCodes = new List<string>()
             {
@@ -175,24 +157,20 @@ namespace TestApi
             };
 
             AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var client = new RestClient(options);
-            var request = new RestRequest("http://localhost:49000/zip-codes/expand"); 
-            var zipcodes = new ZipCode(new List<string>() { "12366", "12345" });
-            request.AddJsonBody(zipcodes.Body);
-            AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(zipcodes.Body), "json");
-            Logger.Info(request.Resource, "Request");
-            var response = client.Post(request);
-            Logger.Info(response.Content, "Response");
+            var client = await MyWriteHttpClient.getInstance();
+            var zipcodes = new List<string>() { "12366", "12345" };
+            var json = JsonConvert.SerializeObject(zipcodes);
+            var data = new StringContent(json, Encoding.UTF8, "application/json");
+            AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(json), "json");
+            var response = await client.PostAsync("http://localhost:49000/zip-codes/expand", data);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
             try
             {
                 Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
-                var receivedZipcodes = ZipCode.ZipCodesToList(response.Content);
+                var receivedZipcodes = ZipCode.ZipCodesToList(responseContent);
                 Assert.That(receivedZipcodes, Is.EqualTo(expectedZipCodes), "lists of zipCodes are not equal");//bug
             }
             catch (Exception ex)
@@ -207,7 +185,7 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Post")]
         [AllureSeverity(SeverityLevel.critical)]
-        public void PostCreateUser_Test()
+        public async Task PostCreateUser_Test()
         {
             var expectedZipCodes = new List<string>()
             {
@@ -216,23 +194,18 @@ namespace TestApi
             };
 
             AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var createUserRequest = new RestRequest("http://localhost:49000/users");
+            var writeClient = await MyWriteHttpClient.getInstance();
             var user = new User(20, "TestName", Enums.Sex.FEMALE, "23456");
-            createUserRequest.AddJsonBody(user);
+            JsonContent jsonContent = JsonContent.Create(user);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(user)), "json");
-            Logger.Info(createUserRequest.Resource, "Request");
-            var createUserResponse = writeClient.Post(createUserRequest);
-            Logger.Info(createUserResponse.Content, "Response");
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
             try
             {
-                Assert.That(createUserResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
             }
             catch (Exception ex)
             {
@@ -241,13 +214,13 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that user exist");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            var createdUsers = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(user.Name)), "User is not created");
+                Assert.That(createdUsers.Any(u => u.Name.Equals(user.Name)), "User is not created");
             }
             catch (Exception ex)
             {
@@ -256,9 +229,9 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that used zip code is removed from the list");
-            var getZipCodesRequest = new RestRequest("http://localhost:49000/zip-codes");
-            var getZipCodesResponse = readClient.GetAsync(getZipCodesRequest).Result;
-            var receivedZipcodes = ZipCode.ZipCodesToList(getZipCodesResponse.Content);
+            response = await readClient.GetAsync("http://localhost:49000/zip-codes");
+            responseContent = response.Content.ReadAsStringAsync().Result;
+            var receivedZipcodes = ZipCode.ZipCodesToList(responseContent);
             try
             {
                 Assert.That(receivedZipcodes, Is.EqualTo(expectedZipCodes), "list of zipCodes is not equal");
@@ -275,26 +248,20 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Post")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void PostRequiredFieldsCreateUser_Test()
+        public async Task PostRequiredFieldsCreateUser_Test() 
         {
-            AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var createUserRequest = new RestRequest("http://localhost:49000/users");
+            var writeClient = await MyWriteHttpClient.getInstance();
             var user = new User("TestNameRF", Enums.Sex.FEMALE);
-            createUserRequest.AddJsonBody(user);
+            var jsonContent = JsonContent.Create(user);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(user)), "json");
-            Logger.Info(createUserRequest.Resource, "Request");
-            var createUserResponse = writeClient.Post(createUserRequest);
-            Logger.Info(createUserResponse.Content, "Response");
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
             try
             {
-                Assert.That(createUserResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
             }
             catch (Exception ex)
             {
@@ -302,14 +269,14 @@ namespace TestApi
                 throw new Exception();
             }
 
-            AllureApi.Step("Check that user is exist");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
-            try 
-            { 
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(user.Name)), "User is not created");
+            AllureApi.Step("Check that user exist");
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            var createdUsers = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
+            try
+            {
+                Assert.That(createdUsers.Any(u => u.Name.Equals(user.Name)), "User is not created");
             }
             catch (Exception ex)
             {
@@ -318,45 +285,42 @@ namespace TestApi
             }
         }
 
+
         [Test]
         [AllureTag("Users")]
         [AllureOwner("Roma")]
         [AllureSubSuite("Post")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void PostNotAvailableZipCodeCreateUser_UserIsNotCreated_Test()
+        public async Task PostNotAvailableZipCodeCreateUser_UserIsNotCreated_Test()
         {
             AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var createUserRequest = new RestRequest("http://localhost:49000/users");
+            var writeClient = await MyWriteHttpClient.getInstance();
             var user = new User(20, "TestNameZC", Enums.Sex.FEMALE, "111");
-            createUserRequest.AddJsonBody(user);
+            var jsonContent = JsonContent.Create(user);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(user)), "json");
-            Logger.Info(createUserRequest.Resource, "Request");
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
             try
             {
-                var exception = Assert.Throws<HttpRequestException>(() => writeClient.Post(createUserRequest));
-                Assert.That(exception.StatusCode, Is.EqualTo(HttpStatusCode.FailedDependency), "Status Code is not 424");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.FailedDependency), "Status Code is not 424");
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, "Exception is occurred");
                 throw new Exception();
             }
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
 
             AllureApi.Step("Check that user is not exist");
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            var createdUsers = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(user.Name)), Is.False, "User is created");
+                Assert.That(createdUsers.Any(u => u.Name.Equals(user.Name)), Is.False, "User is created");
             }
             catch (Exception ex)
             {
@@ -370,26 +334,22 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Post")]
         [AllureSeverity(SeverityLevel.normal)]
-        [AllureIssue("Issue Status Code is not 400")]
-        public void PostDuplicateCreateUser_UserIsNotCreated_Test()
+        [AllureIssue("Issue Status Code is not 400, but 424")]
+        public async Task PostDuplicateCreateUser_UserIsNotCreated_Test()
         {
             AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var createUserRequest = new RestRequest("http://localhost:49000/users");
-            var user = new User(20, "TestName", Enums.Sex.FEMALE, "23456"); ;
-            createUserRequest.AddJsonBody(user);
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var user = new User(20, "TestName", Enums.Sex.FEMALE, "23456");
+            var jsonContent = JsonContent.Create(user);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(user)), "json");
-            Logger.Info(createUserRequest.Resource, "Request");
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
             try
             {
-                var exception = Assert.Throws<HttpRequestException>(() => writeClient.Post(createUserRequest));
-                Assert.That(exception.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest), "Status Code is not 400");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest), "Status Code is not 400");
             }
             catch (Exception ex)
             {
@@ -398,13 +358,13 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that user is not exist");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            var createdUsers = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(user.Name)), Is.False, "User is created");
+                Assert.That(createdUsers.Any(u => u.Name.Equals(user.Name)), Is.False, "User is created");
             }
             catch (Exception ex)
             {
@@ -418,7 +378,7 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Get")]
         [AllureSeverity(SeverityLevel.critical)]
-        public void GetUsers_Test()
+        public async Task GetUsers_Test()
         {
             var users = new List<User>()
             {
@@ -428,29 +388,23 @@ namespace TestApi
             };
 
             AllureApi.Step("Create users");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var createUserRequest = new RestRequest("http://localhost:49000/users");
-            createUserRequest.AddJsonBody(users[0]);
-            var createUserResponse = writeClient.Post(createUserRequest);
-            createUserRequest = new RestRequest("http://localhost:49000/users");
-            createUserRequest.AddJsonBody(users[1]);
-            createUserResponse = writeClient.Post(createUserRequest);
-            createUserRequest = new RestRequest("http://localhost:49000/users");
-            createUserRequest.AddJsonBody(users[2]);
-            createUserResponse = writeClient.Post(createUserRequest);
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(users[0]);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(users[1]);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(users[2]);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
 
             AllureApi.Step("Check that users are exist");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var createdUsers = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.All(x => users.Any(y => y.Name == x.Name)), "Users are not correspond");
+                Assert.That(createdUsers.All(x => users.Any(y => y.Name == x.Name)), "Users are not correspond");
             }
             catch (Exception ex)
             {
@@ -464,30 +418,44 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Get")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void GetUsersByOlderAge_Test()
+        public async Task GetUsersByOlderAge_Test()
         {
+            var users = new List<User>()
+            {
+                new User(20, "TestName20", Enums.Sex.MALE, "12345"),
+                new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
+                new User(40, "TestName40", Enums.Sex.FEMALE, "ABCDE"),
+            };
             var expectedUsers = new List<User>()
             {
                 new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
                 new User(40, "TestName40", Enums.Sex.FEMALE, "ABCDE"),
             };
 
+            AllureApi.Step("Create users");
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(users[0]);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(users[1]);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(users[2]);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+
             AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = ReadAuthenticator.getInstance(),
-            };
-            var client = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            getUserRequest.AddParameter("olderThan", 29);
-            Logger.Info(getUserRequest.Resource, "Request");
-            var getUserResponse = client.GetAsync<List<UserResponse>>(getUserRequest).Result;
-            Logger.Info(getUserResponse.ToString(), "Response");
+            var readClient = await MyReadHttpClient.getInstance();
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost:49000/users");
+            var multipartContent = new MultipartFormDataContent();
+            multipartContent.Add(new StringContent("29"), "olderThan");
+            request.Content = multipartContent;
+            response = await readClient.SendAsync(request);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var createdUsers = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
 
             AllureApi.Step("Check response");
             try
             {
-                Assert.That(expectedUsers.All(x => getUserResponse.Any(y => y.Name == x.Name)), "Users filtered by age are not correspond");
+                Assert.That(expectedUsers.All(x => createdUsers.Any(y => y.Name == x.Name)), "Users filtered by age are not correspond");
             }
             catch (Exception ex)
             {
@@ -501,30 +469,45 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Get")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void GetUsersByYoungerAge_Test()
+        public async Task GetUsersByYoungerAge_Test()
         {
+            var users = new List<User>()
+            {
+                new User(20, "TestName20", Enums.Sex.MALE, "12345"),
+                new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
+                new User(40, "TestName40", Enums.Sex.FEMALE, "ABCDE"),
+            };
+
             var expectedUsers = new List<User>()
             {
                 new User(20, "TestName20", Enums.Sex.MALE, "12345"),
                 new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
             };
 
+            AllureApi.Step("Create users");
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(users[0]);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(users[1]);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(users[2]);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+
             AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = ReadAuthenticator.getInstance(),
-            };
-            var client = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            getUserRequest.AddParameter("youngerThan", 39);
-            Logger.Info(getUserRequest.Resource, "Request");
-            var getUserResponse = client.GetAsync<List<UserResponse>>(getUserRequest).Result;
-            Logger.Info(getUserResponse.ToString(), "Response");
+            var readClient = await MyReadHttpClient.getInstance();
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost:49000/users");
+            var multipartContent = new MultipartFormDataContent();
+            multipartContent.Add(new StringContent("39"), "youngerThan");
+            request.Content = multipartContent;
+            response = await readClient.SendAsync(request);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var createdUsers = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
 
             AllureApi.Step("Check response");
             try
             {
-                Assert.That(expectedUsers.All(x => getUserResponse.Any(y => y.Name == x.Name)), "Users filtered by age are not correspond");
+                Assert.That(expectedUsers.All(x => createdUsers.Any(y => y.Name == x.Name)), "Users filtered by age are not correspond");
             }
             catch (Exception ex)
             {
@@ -538,30 +521,45 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Get")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void GetUsersBySex_Test()
+        public async Task GetUsersBySex_Test()
         {
+            var users = new List<User>()
+            {
+                new User(20, "TestName20", Enums.Sex.MALE, "12345"),
+                new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
+                new User(40, "TestName40", Enums.Sex.FEMALE, "ABCDE"),
+            };
+
             var expectedUsers = new List<User>()
             {
                 new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
                 new User(40, "TestName40", Enums.Sex.FEMALE, "ABCDE"),
             };
 
+            AllureApi.Step("Create users");
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(users[0]);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(users[1]);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(users[2]);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+
             AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = ReadAuthenticator.getInstance(),
-            };
-            var client = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            getUserRequest.AddParameter("sex", "FEMALE");
-            Logger.Info(getUserRequest.Resource, "Request");
-            var getUserResponse = client.GetAsync<List<UserResponse>>(getUserRequest).Result;
-            Logger.Info(getUserResponse.ToString(), "Response");
+            var readClient = await MyReadHttpClient.getInstance();
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost:49000/users");
+            var multipartContent = new MultipartFormDataContent();
+            multipartContent.Add(new StringContent("FEMALE"), "sex");
+            request.Content = multipartContent;
+            response = await readClient.SendAsync(request);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var createdUsers = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
 
             AllureApi.Step("Check response");
             try
             {
-                Assert.That(expectedUsers.All(x => getUserResponse.Any(y => y.Name == x.Name)), "Users filtered by age are not correspond");
+                Assert.That(expectedUsers.All(x => createdUsers.Any(y => y.Name == x.Name)), "Users filtered by age are not correspond");
             }
             catch (Exception ex)
             {
@@ -575,10 +573,10 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Put")]
         [AllureSeverity(SeverityLevel.critical)]
-        public void UpdateUser_Test()
+        public async Task UpdateUser_Test()
         {
-            var userToChange = new User(30, "TestName30", Enums.Sex.FEMALE, "12333");
-            var userNewValues = new User(30, "TestName31", Enums.Sex.FEMALE, "12333");
+            var userToChange = new User(30, "TestName30", Enums.Sex.FEMALE, "12345");
+            var userNewValues = new User(30, "TestName31", Enums.Sex.FEMALE, "12345");
             var updateUserBody = new UpdateUserRequest()
             {
                 UserToChange = userToChange,
@@ -586,27 +584,21 @@ namespace TestApi
             };
 
             AllureApi.Step("Create user");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var createUserRequest = new RestRequest("http://localhost:49000/users");
-            createUserRequest.AddJsonBody(userToChange);
-            var createUserResponse = writeClient.Post(createUserRequest);
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(userToChange);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
 
-            AllureApi.Step("Send response");
-            var putUserRequest = new RestRequest("http://localhost:49000/users");
-            putUserRequest.AddJsonBody(updateUserBody);
+            AllureApi.Step("Send request");
+            jsonContent = JsonContent.Create(updateUserBody);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(updateUserBody)), "json");
-            Logger.Info(putUserRequest.Resource, "Request");
-            var putUserResponse = writeClient.PutAsync(putUserRequest).Result;
-            Logger.Info(putUserResponse.ToString(), "Response");
+            response = await writeClient.PutAsync("http://localhost:49000/users", jsonContent);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check response");
             try
             {
-                Assert.That(putUserResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Status Code is not 200");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Status Code is not 200");
             }
             catch (Exception ex)
             {
@@ -615,13 +607,14 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that user is updated");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var user = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(userNewValues.Name)), "User is not updated");
+                Assert.That(user.Any(u => u.Name.Equals(userNewValues.Name)), "User is not updated");
             }
             catch (Exception ex)
             {
@@ -635,33 +628,32 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Put")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void UpdateUserWithIndalidZipCode_UserIsNotUpdated_Test()
+        public async Task UpdateUserWithIndalidZipCode_UserIsNotUpdated_Test()
         {
-            var userToChange = new User(30, "TestName31", Enums.Sex.FEMALE, "12333");
-            var userNewValues = new User(30, "TestName32", Enums.Sex.FEMALE, "123333");
+            var userToChange = new User(30, "TestName30", Enums.Sex.FEMALE, "12345");
+            var userNewValues = new User(30, "TestName31", Enums.Sex.FEMALE, "123");
             var updateUserBody = new UpdateUserRequest()
             {
                 UserToChange = userToChange,
                 UserNewValues = userNewValues
             };
-            var expectedMessage = "One or more errors occurred. (Request failed with status code FailedDependency)";
+
+            AllureApi.Step("Create user");
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(userToChange);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
 
             AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var putUserRequest = new RestRequest("http://localhost:49000/users");
-            putUserRequest.AddJsonBody(updateUserBody);
+            jsonContent = JsonContent.Create(updateUserBody);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(updateUserBody)), "json");
-            Logger.Info(putUserRequest.Resource, "Request");
+            response = await writeClient.PutAsync("http://localhost:49000/users", jsonContent);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
-            AllureApi.Step("Check that exception was thrown");
+            AllureApi.Step("Check Response");
             try
             {
-                var exception = Assert.Throws<AggregateException>(() => writeClient.PutAsync(putUserRequest).Result.ToString());
-                Assert.That(exception.Message, Is.EqualTo(expectedMessage), "Status Code is not 424");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.FailedDependency), "Status Code is not 424");
             }
             catch (Exception ex)
             {
@@ -670,13 +662,14 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that user is not updated");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var user = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(userNewValues.Name)), Is.False, "User is updated");
+                Assert.That(user.Any(u => u.Name.Equals(userNewValues.Name)), Is.False, "User is updated");
             }
             catch (Exception ex)
             {
@@ -690,7 +683,8 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Put")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void UpdateUserWithNotFilledReqiuredFields_UserIsNotUpdated_Test()
+        [AllureIssue("Issue Status Code is not 409")]
+        public async Task UpdateUserWithNotFilledReqiuredFields_UserIsNotUpdated_Test()
         {
             var userToChange = new User(30, "TestName31", Enums.Sex.FEMALE, "12333");
             var userNewValues = new User("TestName33", Enums.Sex.FEMALE);
@@ -700,24 +694,23 @@ namespace TestApi
                 UserToChange = userToChange,
                 UserNewValues = userNewValues
             };
-            var expectedMessage = "One or more errors occurred. (Request failed with status code Conflict)";
+
+            AllureApi.Step("Create user");
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(userToChange);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
 
             AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var putUserRequest = new RestRequest("http://localhost:49000/users");
-            putUserRequest.AddJsonBody(updateUserBody);
+            jsonContent = JsonContent.Create(updateUserBody);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(updateUserBody)), "json");
-            Logger.Info(putUserRequest.Resource, "Request");
+            response = await writeClient.PutAsync("http://localhost:49000/users", jsonContent);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
-            AllureApi.Step("Check that exception was thrown");
+            AllureApi.Step("Check Response");
             try
             {
-                var exception = Assert.Throws<AggregateException>(() => writeClient.PutAsync(putUserRequest).Result.ToString());
-                Assert.That(exception.Message, Is.EqualTo(expectedMessage), "Status Code is not 409");//
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict), "Status Code is not 409");
             }
             catch (Exception ex)
             {
@@ -726,13 +719,14 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that user is not updated");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var user = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(userNewValues.Name)), Is.False, "User is updated");
+                Assert.That(user.Any(u => u.Name.Equals(userNewValues.Name)), Is.False, "User is updated");
             }
             catch (Exception ex)
             {
@@ -746,27 +740,31 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Delete")]
         [AllureSeverity(SeverityLevel.critical)]
-        public void DeleteUser_Test()
+        public async Task DeleteUser_Test()
         {
             var userToDelete = new User(20, "TestName20", Enums.Sex.MALE, "12345");
+            var userNotDeleted = new User(30, "TestName30", Enums.Sex.MALE, "23456");
             var expectedZipCode = "12345";
 
-            AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var deleteUserRequest = new RestRequest("http://localhost:49000/users");
-            deleteUserRequest.AddJsonBody(userToDelete);
+            AllureApi.Step("Create users");
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(userToDelete);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(userNotDeleted);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+
+            AllureApi.Step("Delete user");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Delete, "http://localhost:49000/users");
+            request.Content = JsonContent.Create(userToDelete);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(userToDelete)), "json");
-            Logger.Info(deleteUserRequest.Resource, "Request");
-            var deleteUserResponse = writeClient.DeleteAsync(deleteUserRequest).Result;
+            response = await writeClient.SendAsync(request); 
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check response");
             try
             {
-                Assert.That(deleteUserResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent), "Status code is not 204");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent), "Status code is not 204");
             }
             catch (Exception ex)
             {
@@ -775,14 +773,14 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that user is deleted");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
-            Logger.Info(getUserResponse.ToString(), "Response");
-            try 
-            { 
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(userToDelete.Name)), Is.False, "User is not deleted"); 
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var users = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
+            try
+            {
+                Assert.That(users.Any(u => u.Name.Equals(userToDelete.Name)), Is.False, "User is not deleted");
             }
             catch (Exception ex)
             {
@@ -791,9 +789,11 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that zipcode is available");
-            var getZipCodesRequest = new RestRequest("http://localhost:49000/zip-codes");
-            var getZipCodesresponse = readClient.GetAsync(getZipCodesRequest).Result;
-            var receivedZipcodes = ZipCode.ZipCodesToList(getZipCodesresponse.Content);
+            readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/zip-codes");
+            responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
+            var receivedZipcodes = ZipCode.ZipCodesToList(responseContent);
             try
             {
                 Assert.That(receivedZipcodes.Any(z => z.Equals(expectedZipCode)), Is.True, "Zipcode not exist");
@@ -810,29 +810,31 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Delete")]
         [AllureSeverity(SeverityLevel.normal)]
-        [AllureIssue("Issue User is not deleted")]
-        public void DeleteUserWithRequiredFields_UserIsDeleted_Test()
+        public async Task DeleteUserWithRequiredFields_UserIsDeleted_Test()
         {
-            var userToDelete = new User("TestName40", Enums.Sex.FEMALE);
-            var expectedZipCode = "12345";
 
-            AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var deleteUserRequest = new RestRequest("http://localhost:49000/users");
-            deleteUserRequest.AddJsonBody(userToDelete);
+            var userToDelete = new User("TestName40", Enums.Sex.FEMALE);
+            var userNotDeleted = new User(30, "TestName30", Enums.Sex.MALE, "23456");
+
+            AllureApi.Step("Create users");
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(userToDelete);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(userNotDeleted);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+
+            AllureApi.Step("Delete user");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Delete, "http://localhost:49000/users");
+            request.Content = JsonContent.Create(userToDelete);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(userToDelete)), "json");
-            Logger.Info(deleteUserRequest.Resource, "Request");
-            var deleteUserResponse = writeClient.DeleteAsync(deleteUserRequest).Result;
-            Logger.Info(deleteUserResponse.Content, "Response");
+            response = await writeClient.SendAsync(request);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check response");
             try
             {
-                Assert.That(deleteUserResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent), "Status code is not 204");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent), "Status code is not 204");
             }
             catch (Exception ex)
             {
@@ -841,27 +843,14 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that user is deleted");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var users = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(u => u.Name.Equals(userToDelete.Name)), Is.False, "User is not deleted");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "Exception is occurred");
-                throw new Exception();
-            }
-
-            AllureApi.Step("Check that zipcode is available");
-            var getZipCodesRequest = new RestRequest("http://localhost:49000/zip-codes");
-            var getZipCodesresponse = readClient.GetAsync(getZipCodesRequest).Result;
-            var receivedZipcodes = ZipCode.ZipCodesToList(getZipCodesresponse.Content);
-            try
-            {
-                Assert.That(receivedZipcodes.Any(z => z.Equals(expectedZipCode)), Is.True, "Zipcode not exist");
+                Assert.That(users.Any(u => u.Name.Equals(userToDelete.Name)), Is.False, "User is not deleted");
             }
             catch (Exception ex)
             {
@@ -875,28 +864,31 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Delete")]
         [AllureSeverity(SeverityLevel.normal)]
-        public void DeleteUserWithEmptyRequiredField_UserIsNotDeleted_Test()
+        public async Task DeleteUserWithEmptyRequiredField_UserIsNotDeleted_Test()
         {
             var userToDelete = new User(20, "TestName40", Enums.Sex.FEMALE, "ABCDE");
+            var userNotDeleted = new User(30, "TestName30", Enums.Sex.MALE, "23456");
+
+            AllureApi.Step("Create users");
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var jsonContent = JsonContent.Create(userToDelete);
+            var response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
+            jsonContent = JsonContent.Create(userNotDeleted);
+            response = await writeClient.PostAsync("http://localhost:49000/users", jsonContent);
             userToDelete.Name = null;
-            var expectedErrorMessage = "One or more errors occurred. (Request failed with status code Conflict)";
 
-            AllureApi.Step("Send request");
-            var options = new RestClientOptions()
-            {
-                Authenticator = WriteAuthenticator.getInstance(),
-            };
-            var writeClient = new RestClient(options);
-            var deleteUserRequest = new RestRequest("http://localhost:49000/users");
-            Logger.Info(deleteUserRequest.Resource, "Request");
-            deleteUserRequest.AddJsonBody(userToDelete);
+            AllureApi.Step("Delete user");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Delete, "http://localhost:49000/users");
+            request.Content = JsonContent.Create(userToDelete);
             AllureApi.AddAttachment("request", "application/json", Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(userToDelete)), "json");
+            response = await writeClient.SendAsync(request);
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+            Logger.Info(responseContent, "Response");
 
-            AllureApi.Step("Check that exception is thrown");
+            AllureApi.Step("Check response");
             try
             {
-                var exception = Assert.Throws<AggregateException>(() => writeClient.DeleteAsync(deleteUserRequest).Result.ToString());
-                Assert.That(exception.Message, Is.EqualTo(expectedErrorMessage), "Status Code is not 409");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict), "Status code is not 209");
             }
             catch (Exception ex)
             {
@@ -904,14 +896,15 @@ namespace TestApi
                 throw new Exception();
             }
 
-            AllureApi.Step("Check that user is not deleted");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            AllureApi.Step("Check that user is deleted");
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var users = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(u => u.Name.Equals("TestName40")), Is.True, "User is deleted deleted");
+                Assert.That(users.Any(u => u.Name.Equals("TestName40")), Is.True, "User is deleted");
             }
             catch (Exception ex)
             {
@@ -925,7 +918,7 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Post")]
         [AllureSeverity(SeverityLevel.critical)]
-        public void UploadUsers_Test()
+        public async Task UploadUsers_Test() 
         {
             var expectedUsers = new List<User>()
             {
@@ -933,24 +926,25 @@ namespace TestApi
                 new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
                 new User(40, "TestName40", Enums.Sex.FEMALE, "ABCDE"),
             };
+            var filePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyJson.json";
 
             AllureApi.Step("Send request");
-            var options = new RestClientOptions()
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var formattedJson = new ByteArrayContent(await File.ReadAllBytesAsync(filePath));
+            formattedJson.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
+            var content = new MultipartFormDataContent
             {
-                Authenticator = WriteAuthenticator.getInstance(),
+                { formattedJson, "file", Path.GetFileName(filePath) }
             };
-            var writeClient = new RestClient(options);
-            var uploadUsersRequest = new RestRequest("http://localhost:49000/users/upload");
-            uploadUsersRequest.AddFile("file", Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyJson.json");
-            AllureApi.AddAttachment("request", "application/json", Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyJson.json");
-            Logger.Info(uploadUsersRequest.Resource, "Request");
-            var uploadUsersResponse = writeClient.Post(uploadUsersRequest);
-            Logger.Info(uploadUsersResponse.Content, "Response");
+            AllureApi.AddAttachment("request", "application/json", filePath);
+            var response = await writeClient.PostAsync("http://localhost:49000/users/upload", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
 
             AllureApi.Step("Check Response");
             try
             {
-                Assert.That(uploadUsersResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created), "Status Code is not 201");
             }
             catch (Exception ex)
             {
@@ -959,13 +953,14 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that users are created");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var users = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.All(x => expectedUsers.Any(y => y.Name == x.Name)), "Users are not correspond");
+                Assert.That(users.All(x => expectedUsers.Any(y => y.Name == x.Name)), "Users are not correspond");
             }
             catch (Exception ex)
             {
@@ -979,32 +974,34 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Post")]
         [AllureSeverity(SeverityLevel.normal)]
-        [AllureIssue("Issue Status code is not 424")]
-        public void UploadUsersWithIncorrectZipCodes_UsersAreNotUploadedTest()
+        [AllureIssue("Issue Status code is not 424, but 500")]
+        public async Task UploadUsersWithIncorrectZipCodes_UsersAreNotUploadedTest()
         {
-            var expectedUsers = new List<User>()
+            var incorrectUsers = new List<User>()
             {
-                new User(20, "TestName20", Enums.Sex.MALE, "12344"),
+                new User(20, "TestName20", Enums.Sex.MALE, "12345"),
                 new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
                 new User(40, "TestName40", Enums.Sex.FEMALE, "ABCDE"),
             };
+            var filePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyIncorrectJson.json";
 
             AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var formattedJson = new ByteArrayContent(await File.ReadAllBytesAsync(filePath));
+            formattedJson.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
+            var content = new MultipartFormDataContent
             {
-                Authenticator = WriteAuthenticator.getInstance(),
+                { formattedJson, "file", Path.GetFileName(filePath) }
             };
-            var writeClient = new RestClient(options);
-            var uploadUsersRequest = new RestRequest("http://localhost:49000/users/upload");
-            uploadUsersRequest.AddFile("file", Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyIncorrectJson.json");
-            AllureApi.AddAttachment("request", "application/json", Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyIncorrectJson.json");
-            Logger.Info(uploadUsersRequest.Resource, "Request");
+            AllureApi.AddAttachment("request", "application/json", filePath);
+            var response = await writeClient.PostAsync("http://localhost:49000/users/upload", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
 
-            AllureApi.Step("Check that error was thrown");
+            AllureApi.Step("Check response");
             try
             {
-                var exception = Assert.Throws<HttpRequestException>(() => writeClient.Post(uploadUsersRequest));
-                Assert.That(exception.StatusCode, Is.EqualTo(HttpStatusCode.FailedDependency), "Status Code is not 424");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.FailedDependency), "Status code is not 424");
             }
             catch (Exception ex)
             {
@@ -1013,13 +1010,14 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that users are not uploaded");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var users = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(x => expectedUsers.Any(y => y.Name == x.Name)), Is.False, "Users are uploaded");
+                Assert.That(users.Any(x => incorrectUsers.Any(y => y.Name == x.Name)), Is.False, "Users are uploaded");
             }
             catch (Exception ex)
             {
@@ -1033,31 +1031,33 @@ namespace TestApi
         [AllureOwner("Roma")]
         [AllureSubSuite("Post")]
         [AllureSeverity(SeverityLevel.normal)]
-        [AllureIssue("Issue Status code is not 409")]
-        public void UploadUsersWithMissedRequiredFields_UsersAreNotUploadedTest()
+        [AllureIssue("Issue Status code is not 409, but was 500")]
+        public async Task UploadUsersWithMissedRequiredFields_UsersAreNotUploadedTest()
         {
-            var expectedUsers = new List<User>()
+            var incorrectUsers = new List<User>()
             {
                 new User(30, "TestName30", Enums.Sex.FEMALE, "23456"),
                 new User(40, "TestName40", Enums.Sex.FEMALE, "ABCDE"),
             };
+            var filePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyMissedRequiredFieldsJson.json";
 
             AllureApi.Step("Send Request");
-            var options = new RestClientOptions()
+            var writeClient = await MyWriteHttpClient.getInstance();
+            var formattedJson = new ByteArrayContent(await File.ReadAllBytesAsync(filePath));
+            formattedJson.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
+            var content = new MultipartFormDataContent
             {
-                Authenticator = WriteAuthenticator.getInstance(),
+                { formattedJson, "file", Path.GetFileName(filePath) }
             };
-            var writeClient = new RestClient(options);
-            var uploadUsersRequest = new RestRequest("http://localhost:49000/users/upload");
-            uploadUsersRequest.AddFile("file", Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyMissedRequiredFieldsJson.json");
-            AllureApi.AddAttachment("request", "application/json", Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\MyMissedRequiredFieldsJson.json");
-            Logger.Info(uploadUsersRequest.Resource, "Request");
+            AllureApi.AddAttachment("request", "application/json", filePath);
+            var response = await writeClient.PostAsync("http://localhost:49000/users/upload", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
 
-            AllureApi.Step("Check that error was thrown");
+            AllureApi.Step("Check response");
             try
             {
-                var exception = Assert.Throws<HttpRequestException>(() => writeClient.Post(uploadUsersRequest));
-                Assert.That(exception.StatusCode, Is.EqualTo(HttpStatusCode.Conflict), "Status Code is not 409");
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict), "Status code is not 209");
             }
             catch (Exception ex)
             {
@@ -1066,24 +1066,20 @@ namespace TestApi
             }
 
             AllureApi.Step("Check that users are not uploaded");
-            options.Authenticator = ReadAuthenticator.getInstance();
-            var readClient = new RestClient(options);
-            var getUserRequest = new RestRequest("http://localhost:49000/users");
-            var getUserResponse = readClient.GetAsync<List<UserResponse>>(getUserRequest).Result;
+            var readClient = await MyReadHttpClient.getInstance();
+            response = await readClient.GetAsync("http://localhost:49000/users");
+            responseContent = await response.Content.ReadAsStringAsync();
+            Logger.Info(responseContent, "Response");
+            var users = JsonConvert.DeserializeObject<List<UserResponse>>(responseContent);
             try
             {
-                Assert.That(getUserResponse.Any(x => expectedUsers.Any(y => y.Name == x.Name)), Is.True, "Users are uploaded");
+                Assert.That(users.Any(x => incorrectUsers.Any(y => y.Name == x.Name)), Is.False, "Users are uploaded");
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Exception is  occurred");
+                Logger.Error(ex, "Exception is occurred");
                 throw new Exception();
             }
-        }
-
-        public void MyTestTest()
-        {
-           
         }
 
         [OneTimeTearDown]
